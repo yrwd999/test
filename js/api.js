@@ -12,10 +12,8 @@ function getApiBaseUrl() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('api')) return params.get('api');
     if (localStorage.getItem('api_base_url')) return localStorage.getItem('api_base_url');
-    // 默认：本地开发
-    return window.location.protocol === 'https:'
-        ? 'https://web-upload-backend-xxx.fcapp.run'
-        : 'http://localhost:9000';
+    // 默认：生产环境 FC 地址（本地开发时可通过 localStorage 或 ?api= 覆盖）
+    return 'https://web-upl-backend-doc-pur-service-inmizdeodr.cn-beijing.fcapp.run';
 }
 
 const API_BASE_URL = getApiBaseUrl();

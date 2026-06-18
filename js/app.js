@@ -128,7 +128,16 @@ const App = {
             RenameModule.renderTable(result);
 
             if (RenameModule.hasErrors(result)) {
-                this.showInfo('部分文件无法识别项目编号，请检查后移除');
+                this.showInfo('部分文件无法识别项目编号，已禁用上传');
+                // 禁用确认按钮
+                const confirmBtn = document.getElementById('confirm-upload');
+                confirmBtn.disabled = true;
+                confirmBtn.classList.add('btn-disabled');
+            } else {
+                // 所有文件正常，确保按钮可用
+                const confirmBtn = document.getElementById('confirm-upload');
+                confirmBtn.disabled = false;
+                confirmBtn.classList.remove('btn-disabled');
             }
 
             document.getElementById('step-preview').classList.remove('hidden');
@@ -219,6 +228,16 @@ const App = {
             const status = result.status || 'UNKNOWN';
             this.showSuccess(`KB 同步完成：${synced} 个文件，状态：${status}`);
             syncBtn.textContent = `✅ 已同步 (${synced} 个文件)`;
+
+            // 更新上传结果中的状态标签
+            if (status === 'SUCCESS') {
+                document.querySelectorAll('.upload-result-item[data-file-id] .parse-status').forEach(el => {
+                    if (el.textContent.includes('解析完成') || el.textContent.includes('解析中')) {
+                        el.textContent = '✅ 已同步';
+                        el.className = 'parse-status status-ok';
+                    }
+                });
+            }
 
             // Refresh KB documents after sync
             setTimeout(() => this._loadKBDocuments(), 1000);
