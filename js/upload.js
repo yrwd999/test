@@ -125,6 +125,22 @@ const UploadModule = {
     },
 
     /**
+     * 同步文件到知识库
+     * @param {string[]} fileIds - 已完成上传的 file_id 列表
+     */
+    async syncToKB(fileIds) {
+        try {
+            const result = await ApiClient.syncToKB(fileIds);
+            return result;
+        } catch (err) {
+            if (err instanceof ApiError) {
+                throw new Error(err.body?.message || err.message);
+            }
+            throw err;
+        }
+    },
+
+    /**
      * 格式化文件大小
      */
     _formatSize(bytes) {

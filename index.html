@@ -68,6 +68,30 @@
         <section id="step-progress" class="card hidden">
             <h2>上传进度</h2>
             <div id="upload-results"></div>
+            <div class="upload-actions hidden" id="upload-actions">
+                <button id="btn-sync-kb" class="btn-primary">🔄 同步到知识库</button>
+                <button id="btn-new-upload" class="btn-secondary">📤 重新上传</button>
+            </div>
+        </section>
+
+        <!-- KB File List -->
+        <section id="step-file-list" class="card">
+            <div class="section-header">
+                <h2>📋 知识库文件列表</h2>
+                <button id="btn-refresh-files" class="btn-small">🔄 刷新</button>
+            </div>
+            <div class="file-list-controls">
+                <input type="text" id="filter-project-code" placeholder="按项目编号筛选..." class="filter-input">
+                <select id="filter-status" class="filter-select">
+                    <option value="">全部状态</option>
+                    <option value="SUCCESS">解析完成</option>
+                    <option value="PARSING">解析中</option>
+                    <option value="FAILED">失败</option>
+                </select>
+            </div>
+            <div id="file-list-container">
+                <p class="loading-hint">加载中...</p>
+            </div>
         </section>
 
         <!-- API Config (collapsible) -->

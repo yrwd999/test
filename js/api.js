@@ -12,9 +12,9 @@ function getApiBaseUrl() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('api')) return params.get('api');
     if (localStorage.getItem('api_base_url')) return localStorage.getItem('api_base_url');
-    // 默认：HTTPS 用 FC 生产地址，HTTP 用本地开发地址
+    // 默认：本地开发
     return window.location.protocol === 'https:'
-        ? 'https://web-upl-backend-doc-pur-service-inmizdeodr.cn-beijing.fcapp.run'
+        ? 'https://web-upload-backend-xxx.fcapp.run'
         : 'http://localhost:9000';
 }
 
@@ -117,4 +117,11 @@ const ApiClient = {
         params.set('max_results', maxResults);
         return apiFetch(`/api/files?${params}`);
     },
+
+    // Sync to KB
+    syncToKB: (fileIds) =>
+        apiFetch('/api/sync', {
+            method: 'POST',
+            body: JSON.stringify({ file_ids: fileIds }),
+        }),
 };
