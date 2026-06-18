@@ -229,13 +229,11 @@ const App = {
             this.showSuccess(`KB 同步完成：${synced} 个文件，状态：${status}`);
             syncBtn.textContent = `✅ 已同步 (${synced} 个文件)`;
 
-            // 更新上传结果中的状态标签
+            // 更新上传结果中的状态标签为「已同步」
             if (status === 'SUCCESS') {
-                document.querySelectorAll('.upload-result-item[data-file-id] .parse-status').forEach(el => {
-                    if (el.textContent.includes('解析完成') || el.textContent.includes('解析中')) {
-                        el.textContent = '✅ 已同步';
-                        el.className = 'parse-status status-ok';
-                    }
+                document.querySelectorAll('#upload-results .parse-status').forEach(el => {
+                    el.textContent = '✅ 已同步';
+                    el.className = 'parse-status status-ok';
                 });
             }
 
