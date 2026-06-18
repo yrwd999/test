@@ -118,6 +118,9 @@ const ApiClient = {
         return apiFetch(`/api/files?${params}`);
     },
 
+    // List KB indexed documents
+    listKBDocuments: () => apiFetch('/api/kb/documents'),
+
     // Sync to KB
     syncToKB: (fileIds) =>
         apiFetch('/api/sync', {

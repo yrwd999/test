@@ -6,7 +6,7 @@
  * - 流程编排（选类型 → 拖入 → 预览 → 上传 → 轮询）
  * - 上传结果持久化展示
  * - KB 同步触发
- * - KB 文件列表加载与筛选
+ * - KB 文档列表（按项目分组，参考 kb-dashboard 设计）
  * - Toast 通知
  */
 
@@ -21,8 +21,8 @@ const App = {
     /** 本次上传成功的 file_id 列表（用于 KB 同步） */
     _uploadedFileIds: [],
 
-    /** 当前文件列表数据（用于前端筛选） */
-    _allFiles: [],
+    /** KB 文档原始数据 */
+    _allDocs: [],
 
     // ── Init ──────────────────────────────────────
 
@@ -32,9 +32,9 @@ const App = {
         this._bindPreviewActions();
         this._bindProgressActions();
         this._bindApiConfig();
-        this._bindFileListFilters();
+        this._bindKBFilters();
         this._checkBackendHealth();
-        this._loadKBFileList();
+        this._loadKBDocuments();
     },
 
     // ── Health Check ─────────────────────────────
@@ -213,13 +213,15 @@ const App = {
 
         try {
             const result = await UploadModule.syncToKB(this._uploadedFileIds);
-            const synced = result.synced || result.succeeded || '?';
-            const failed = result.failed || 0;
-            this.showSuccess(`KB 同步完成：${synced} 成功 / ${failed} 失败`);
+
+            // 后端返回 { job_id, status, synced_count, error }
+            const synced = result.synced_count !== undefined ? result.synced_count : '?';
+            const status = result.status || 'UNKNOWN';
+            this.showSuccess(`KB 同步完成：${synced} 个文件，状态：${status}`);
             syncBtn.textContent = `✅ 已同步 (${synced} 个文件)`;
 
-            // Refresh file list after sync
-            setTimeout(() => this._loadKBFileList(), 1000);
+            // Refresh KB documents after sync
+            setTimeout(() => this._loadKBDocuments(), 1000);
         } catch (err) {
             this.showError(`KB 同步失败: ${err.message}`);
             syncBtn.disabled = false;
@@ -227,93 +229,166 @@ const App = {
         }
     },
 
-    // ── KB File List ─────────────────────────────
+    // ── KB Documents List (dashboard-style) ───────
 
-    async _loadKBFileList() {
-        const container = document.getElementById('file-list-container');
-        container.innerHTML = '<p class="loading-hint">加载中...</p>';
+    async _loadKBDocuments() {
+        const container = document.getElementById('kb-docs-container');
+        container.innerHTML = '<div class="kb-loading"><div class="loading-spinner"></div>加载中...</div>';
 
         try {
-            const result = await ApiClient.listFiles('', 200);
-            this._allFiles = result.files || [];
-            this._renderFileList();
+            const result = await ApiClient.listKBDocuments();
+            this._allDocs = result.documents || [];
+            this._initKBFilterOptions();
+            this._renderKBStats();
+            this._renderKBProjects();
         } catch (err) {
-            container.innerHTML = `<p class="loading-hint">加载失败: ${err.message}</p>`;
+            container.innerHTML = `<div class="kb-empty">⚠️ 加载失败: ${this._esc(err.message)}</div>`;
         }
     },
 
-    _renderFileList() {
-        const container = document.getElementById('file-list-container');
-        const projectFilter = (document.getElementById('filter-project-code').value || '').trim().toUpperCase();
-        const statusFilter = document.getElementById('filter-status').value;
+    _initKBFilterOptions() {
+        const docs = this._allDocs;
+        const years = [...new Set(docs.map(d => d.year))].sort();
+        const types = [...new Set(docs.map(d => d.document_type).filter(Boolean))].sort();
 
-        let files = this._allFiles;
+        const yearSel = document.getElementById('kb-filter-year');
+        const typeSel = document.getElementById('kb-filter-type');
+
+        // 保留当前选中值
+        const curY = yearSel.value;
+        const curT = typeSel.value;
+
+        yearSel.innerHTML = '<option value="">全部</option>';
+        typeSel.innerHTML = '<option value="">全部</option>';
+
+        years.forEach(y => { const o = document.createElement('option'); o.value = y; o.textContent = y + ' 年'; yearSel.appendChild(o); });
+        types.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t.toUpperCase(); typeSel.appendChild(o); });
+
+        yearSel.value = curY;
+        typeSel.value = curT;
+    },
+
+    _renderKBStats() {
+        const docs = this._allDocs;
+        const projects = new Set(docs.map(d => d.project));
+        const types = new Set(docs.map(d => d.document_type).filter(Boolean));
+        const totalSize = docs.reduce((s, d) => s + (d.size || 0), 0);
+
+        const statsEl = document.getElementById('kb-stats');
+        if (!statsEl) return;
+
+        statsEl.innerHTML = `
+            <div class="kb-stat-card">
+                <div class="kb-stat-icon">📄</div>
+                <div class="kb-stat-value">${docs.length}</div>
+                <div class="kb-stat-label">文档总数</div>
+            </div>
+            <div class="kb-stat-card">
+                <div class="kb-stat-icon">📁</div>
+                <div class="kb-stat-value">${projects.size}</div>
+                <div class="kb-stat-label">项目数</div>
+            </div>
+            <div class="kb-stat-card">
+                <div class="kb-stat-icon">🏷️</div>
+                <div class="kb-stat-value">${types.size}</div>
+                <div class="kb-stat-label">文件类型</div>
+            </div>
+            <div class="kb-stat-card">
+                <div class="kb-stat-icon">💾</div>
+                <div class="kb-stat-value">${this._fmtSize(totalSize)}</div>
+                <div class="kb-stat-label">总数据量</div>
+            </div>
+        `;
+    },
+
+    _renderKBProjects() {
+        const container = document.getElementById('kb-docs-container');
+        const yearFilter = document.getElementById('kb-filter-year')?.value || '';
+        const typeFilter = document.getElementById('kb-filter-type')?.value || '';
+        const search = (document.getElementById('kb-filter-search')?.value || '').toLowerCase();
+
+        let docs = this._allDocs;
 
         // Apply filters
-        if (projectFilter) {
-            files = files.filter(f => {
-                const name = (f.file_name || '').toUpperCase();
-                return name.includes(projectFilter);
-            });
-        }
-        if (statusFilter) {
-            files = files.filter(f => {
-                const s = (f.status || '').toUpperCase();
-                return s === statusFilter || s.includes(statusFilter);
-            });
-        }
+        if (yearFilter) docs = docs.filter(d => d.year === yearFilter);
+        if (typeFilter) docs = docs.filter(d => d.document_type === typeFilter);
+        if (search) docs = docs.filter(d =>
+            d.project.toLowerCase().includes(search) ||
+            d.name.toLowerCase().includes(search)
+        );
 
-        if (files.length === 0) {
-            container.innerHTML = '<p class="loading-hint">暂无文件</p>';
+        // Group by project
+        const projectMap = {};
+        docs.forEach(d => {
+            if (!projectMap[d.project]) {
+                projectMap[d.project] = { docs: [], types: new Set(), totalSize: 0 };
+            }
+            projectMap[d.project].docs.push(d);
+            projectMap[d.project].types.add(d.document_type);
+            projectMap[d.project].totalSize += d.size || 0;
+        });
+
+        const projects = Object.entries(projectMap)
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([code, data]) => ({
+                code,
+                docs: data.docs,
+                types: Array.from(data.types),
+                totalSize: data.totalSize,
+            }));
+
+        // Update count
+        const countEl = document.getElementById('kb-filter-count');
+        if (countEl) countEl.textContent = `${projects.length} 个项目`;
+
+        if (projects.length === 0) {
+            container.innerHTML = '<div class="kb-empty"><div class="kb-empty-icon">📭</div><p>没有匹配的文档</p></div>';
             return;
         }
 
-        const summary = document.createElement('p');
-        summary.className = 'file-list-summary';
-        summary.textContent = `共 ${files.length} 个文件`;
-        container.innerHTML = '';
-        container.appendChild(summary);
+        container.innerHTML = projects.map(p => {
+            const typeTags = p.types.filter(Boolean).map(t =>
+                `<span class="kb-type-tag ${t}">${t.toUpperCase()}</span>`
+            ).join('');
 
-        files.forEach(f => {
-            const item = document.createElement('div');
-            item.className = 'file-list-item';
+            const docRows = p.docs.map(d => `
+                <tr>
+                    <td><span class="kb-doc-type"><span class="kb-doc-dot ${d.document_type}"></span>${this._esc(d.name)}</span></td>
+                    <td>${d.document_type ? d.document_type.toUpperCase() : '—'}</td>
+                    <td>${this._esc(d.category || '—')}</td>
+                    <td style="text-align:right">${this._fmtSize(d.size)}</td>
+                </tr>
+            `).join('');
 
-            const statusClass = this._getStatusClass(f.status);
-            const timeStr = f.create_time ? new Date(f.create_time).toLocaleString('zh-CN') : '—';
+            const yearPart = p.code !== 'UNKNOWN' ? p.code.slice(5, 9) : '????';
+            const numPart = p.code !== 'UNKNOWN' ? p.code.slice(10) : '?';
 
-            item.innerHTML = `
-                <span class="file-icon">📄</span>
-                <div class="file-info">
-                    <div class="file-name" title="${this._esc(f.file_name)}">${this._esc(f.file_name)}</div>
-                    <div class="file-meta">${timeStr} · ${this._esc(f.category_id || '—')}</div>
+            return `
+            <div class="kb-project-row" data-project="${this._esc(p.code)}">
+                <div class="kb-project-header" onclick="this.parentElement.classList.toggle('open')">
+                    <span class="kb-chevron">▶</span>
+                    <span class="kb-project-code"><span class="kb-year">${yearPart}</span>${numPart}</span>
+                    <span class="kb-project-count">${p.docs.length} 文档</span>
+                    <span class="kb-project-tags">${typeTags}</span>
+                    <span class="kb-project-size">${this._fmtSize(p.totalSize)}</span>
                 </div>
-                <span class="${statusClass}">${this._esc(f.status)}</span>
-            `;
-
-            container.appendChild(item);
-        });
+                <div class="kb-project-details">
+                    <table class="kb-doc-table">
+                        <thead><tr><th>文件名</th><th>类型</th><th>类别</th><th style="text-align:right">大小</th></tr></thead>
+                        <tbody>${docRows}</tbody>
+                    </table>
+                </div>
+            </div>`;
+        }).join('');
     },
 
-    _getStatusClass(status) {
-        const s = (status || '').toUpperCase();
-        if (s === 'SUCCESS' || s.includes('SUCCESS')) return 'status-ok';
-        if (s === 'FAILED' || s.includes('FAILED')) return 'status-error';
-        return 'status-uploading';
-    },
+    // ── KB Filters ───────────────────────────────
 
-    _esc(str) {
-        if (!str) return '';
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    },
-
-    // ── File List Filters ────────────────────────
-
-    _bindFileListFilters() {
-        const filterInput = document.getElementById('filter-project-code');
-        const filterSelect = document.getElementById('filter-status');
-        const refreshBtn = document.getElementById('btn-refresh-files');
+    _bindKBFilters() {
+        const yearSel = document.getElementById('kb-filter-year');
+        const typeSel = document.getElementById('kb-filter-type');
+        const searchInput = document.getElementById('kb-filter-search');
+        const refreshBtn = document.getElementById('btn-refresh-kb');
 
         const debounce = (fn, ms) => {
             let timer;
@@ -323,12 +398,13 @@ const App = {
             };
         };
 
-        filterInput.addEventListener('input', debounce(() => this._renderFileList(), 300));
-        filterSelect.addEventListener('change', () => this._renderFileList());
-        refreshBtn.addEventListener('click', () => this._loadKBFileList());
+        if (yearSel) yearSel.addEventListener('change', () => this._renderKBProjects());
+        if (typeSel) typeSel.addEventListener('change', () => this._renderKBProjects());
+        if (searchInput) searchInput.addEventListener('input', debounce(() => this._renderKBProjects(), 300));
+        if (refreshBtn) refreshBtn.addEventListener('click', () => this._loadKBDocuments());
     },
 
-    // ── Reset Upload (not full reset — keeps file list) ─────
+    // ── Reset Upload ─────────────────────────────
 
     _resetUpload() {
         this.pendingFiles = [];
@@ -339,6 +415,22 @@ const App = {
         document.getElementById('step-preview').classList.add('hidden');
         document.getElementById('step-progress').classList.add('hidden');
         document.getElementById('upload-actions').classList.add('hidden');
+    },
+
+    // ── Utils ───────────────────────────────────
+
+    _fmtSize(bytes) {
+        if (!bytes) return '—';
+        if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return bytes + ' B';
+    },
+
+    _esc(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
     },
 
     // ── API Config ──────────────────────────────

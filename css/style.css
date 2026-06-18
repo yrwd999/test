@@ -381,79 +381,152 @@ code {
     margin-bottom: 0;
 }
 
-/* ── File List Controls ────────────────────────── */
-.file-list-controls {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 16px;
+/* ── KB Stats ──────────────────────────────────── */
+.kb-stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
 }
 
-.filter-input {
-    flex: 1;
-    padding: 8px 12px;
+.kb-stat-card {
+    background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 6px;
-    font-size: 0.85rem;
-}
-
-.filter-select {
-    padding: 8px 12px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-size: 0.85rem;
-    background: white;
-}
-
-/* ── File List ─────────────────────────────────── */
-#file-list-container {
-    min-height: 60px;
-}
-
-.loading-hint {
+    border-radius: 8px;
+    padding: 16px 14px;
     text-align: center;
-    color: var(--text-muted);
-    padding: 20px;
 }
 
-.file-list-summary {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    margin-bottom: 12px;
+.kb-stat-icon { font-size: 22px; margin-bottom: 6px; }
+.kb-stat-value { font-size: 24px; font-weight: 800; color: var(--text); line-height: 1; }
+.kb-stat-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* ── KB Filters ────────────────────────────────── */
+.kb-filters-bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
 }
 
-.file-list-item {
+.kb-filter-group { display: flex; align-items: center; gap: 6px; }
+.kb-filter-group label { font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.kb-filter-group select,
+.kb-filter-group input {
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 13px;
+    background: white;
+    color: var(--text);
+    outline: none;
+}
+.kb-filter-group input { width: 160px; }
+.kb-filter-group select:focus,
+.kb-filter-group input:focus { border-color: var(--primary); }
+.kb-filter-count { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+
+/* ── KB Project List ─────────────────────────────── */
+.kb-loading { padding: 24px; text-align: center; color: var(--text-muted); font-size: 14px; }
+
+.kb-empty { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+.kb-empty-icon { font-size: 40px; margin-bottom: 10px; }
+
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.kb-project-row {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 6px;
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+}
+.kb-project-row:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+
+.kb-project-header {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--border);
-    font-size: 0.9rem;
+    padding: 12px 16px;
+    cursor: pointer;
+    user-select: none;
 }
+.kb-chevron { font-size: 10px; color: var(--text-muted); transition: transform 0.2s; flex-shrink: 0; }
+.kb-project-row.open .kb-chevron { transform: rotate(90deg); }
 
-.file-list-item:last-child {
-    border-bottom: none;
-}
+.kb-project-code { font-size: 14px; font-weight: 700; color: var(--text); flex-shrink: 0; }
+.kb-project-code .kb-year { color: var(--text-muted); font-weight: 500; margin-right: 2px; }
 
-.file-list-item .file-icon {
-    font-size: 1.1rem;
-}
-
-.file-list-item .file-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.file-list-item .file-name {
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.file-list-item .file-meta {
-    font-size: 0.78rem;
+.kb-project-count {
+    font-size: 11px; font-weight: 600;
     color: var(--text-muted);
+    background: var(--bg);
+    padding: 2px 8px;
+    border-radius: 100px;
 }
+
+.kb-project-tags { display: flex; gap: 4px; }
+.kb-type-tag {
+    font-size: 10px; font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 100px;
+    text-transform: uppercase;
+}
+.kb-type-tag.pdf { background: rgba(245,5,55,0.1); color: #f50537; }
+.kb-type-tag.xlsx { background: rgba(0,184,148,0.1); color: #00b894; }
+.kb-type-tag.docx { background: rgba(9,132,227,0.1); color: #0984e3; }
+.kb-type-tag.doc { background: rgba(108,92,231,0.1); color: #6c5ce7; }
+
+.kb-project-size { font-size: 11px; color: var(--text-muted); margin-left: auto; flex-shrink: 0; }
+
+/* ── KB Project Details ──────────────────────────── */
+.kb-project-details {
+    display: none;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+}
+.kb-project-row.open .kb-project-details { display: block; }
+
+.kb-doc-table { width: 100%; border-collapse: collapse; }
+.kb-doc-table th {
+    font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-muted);
+    padding: 8px 16px;
+    text-align: left;
+    background: rgba(0,0,0,0.02);
+    border-bottom: 1px solid var(--border);
+}
+.kb-doc-table td {
+    font-size: 13px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+}
+.kb-doc-table tr:last-child td { border-bottom: none; }
+
+.kb-doc-type { display: inline-flex; align-items: center; gap: 4px; font-weight: 500; }
+.kb-doc-dot { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
+.kb-doc-dot.pdf { background: #f50537; }
+.kb-doc-dot.xlsx { background: #00b894; }
+.kb-doc-dot.docx { background: #0984e3; }
+.kb-doc-dot.doc { background: #6c5ce7; }
 
 /* ── Responsive ────────────────────────────────── */
 @media (max-width: 640px) {
@@ -463,4 +536,6 @@ code {
     .type-buttons { flex-direction: column; }
     table { font-size: 0.8rem; }
     th, td { padding: 6px 8px; }
+    .kb-stats-row { grid-template-columns: repeat(2, 1fr); }
+    .kb-filter-group input { width: 120px; }
 }
